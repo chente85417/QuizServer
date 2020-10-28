@@ -1,0 +1,23 @@
+{
+  "name": "quizserver",
+  "version": "1.0.0",
+  "description": "Servidor node para interacción con Quiz",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chente85417/QuizServer.git"
+  },
+  "author": "Chente",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/chente85417/QuizServer/issues"
+  },
+  "homepage": "https://github.com/chente85417/QuizServer#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "firebase": "^8.0.0"
+  }
+}
