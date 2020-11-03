@@ -17,75 +17,129 @@ const http = require('http');
 
 const puerto = 8888;
 
+const getRequest = (node) => {
+    const prom = new Promise((resolve, reject) => {
+        firebase.database().ref(node).on("value", (snapshot) => {
+            resolve(snapshot.val());
+        });
+    });
+    return prom;
+}//getRequest
+
 const servidor = http.createServer(function(request, response){
     response.writeHead(200, { 
         "Access-Control-Allow-Origin" : "*",
         'Access-Control-Allow-Headers' : '*',
         "Content-type" : "application/json"
     });
-    if (request.url === '/title')
+
+    switch (request.url)
     {
-        //Solicitud del título
-        const promTitle = new Promise((resolve, reject) => {
-            firebase.database().ref("title").on("value", (snapshot) => {
-                resolve(snapshot.val());
-            });
-        })
-        promTitle.then((res) => {
-            response.write(JSON.stringify(res));
-            response.end();
-        });
-    }//if
-    else if (request.url === '/questions')
-    {
-        //Solicitud de las preguntas
-        const promQuestions = new Promise((resolve, reject) => {
-            firebase.database().ref("questions").on('value', (dataSnapshot) => {
-                resolve(dataSnapshot.val());
-            })
-        });
-        promQuestions.then((res) => {
-            response.write(JSON.stringify(res));
-            response.end();
-        });
-    }//else if
-    else if (request.url === '/questionsCount')
-    {
-        //Solicitud del número de preguntas existentes
-        const promQuestionsCount = new Promise((resolve, reject) => {
-            firebase.database().ref("questionsCount").once("value").then((snapshot) => {
-                resolve(snapshot.val());
-            })
-        });
-        promQuestionsCount.then((res) => {
-            response.write(JSON.stringify(res));
-            response.end();
-        });
-    }//else if
-    else if (request.url === '/newQuestion')
-    {        
-        if (request.method === "POST")
-        {
-            let body = '';
-            request.on('data', chunk => {
-                body += chunk.toString();
-            });
-            request.on('end', () => {
-                let data = body.split('\"')[1].split('n')[1];
-                //console.log(body);
-                //console.log(data);
-                firebase.database().ref("questions").update(JSON.parse(body));
-                firebase.database().ref("questionsCount").set(data);
-                response.end('ok');
-            });
-        }//if
-        else {
-            response.end();
-        }
-    }//else if
-    else
-    {
-        //Solicitud no esperada
-    }//else
+        case '/title'://Petición GET (título del cuestionario)
+            {
+                getRequest('/title').then((res) => {
+                    response.write(JSON.stringify(res));
+                    response.end();
+                });
+                break;
+            }
+        case '/questions'://Petición GET (colección de preguntas)
+            {
+                getRequest('/questions').then((res) => {
+                    response.write(JSON.stringify(res));
+                    response.end();
+                });
+                break;
+            }
+        case '/questionsCount'://Petición GET (número de preguntas existentes)
+            {  
+                getRequest('/questionsCount').then((res) => {
+                    response.write(JSON.stringify(res));
+                    response.end();
+                });
+                break;
+            }
+        case '/login'://Petición POST (credenciales)
+            {
+                if (request.method === "POST")
+                {
+                    console.log('llamada POST');
+                    let body = '';
+                    request.on('data', chunk => {
+                        body += chunk.toString();
+                    });
+                    request.on('end', () => {
+                        //Got credentials from front
+                        const credentials = JSON.parse(body);
+                        console.log(credentials);
+                        //Get user from db
+                        const prom = new Promise((resolve, reject) => {
+                            firebase.database().ref('/user').on("value", (snapshot) => {
+                                resolve(snapshot.val());
+                            });
+                        })
+                        prom.then((res) => {
+                            if (res === credentials.user)
+                            {
+                                console.log(`${res}; ${credentials.user}`);
+                                //User email matches
+                                //Now check out the password
+                                const prom = new Promise((resolve, reject) => {
+                                    firebase.database().ref('/pass').on("value", (snapshot) => {
+                                        resolve(snapshot.val());
+                                    });
+                                })
+                                prom.then((res) => {
+                                    if (res === credentials.pass)
+                                    {
+                                        console.log(`${res}; ${credentials.pass}`);
+                                        //Password matches
+                                        response.end('1');
+                                    }//if
+                                    else
+                                    {
+                                        response.end('0');
+                                    }//else
+                                });
+                            }//if
+                            else
+                            {
+                                response.end('0');
+                            }//else
+                        });
+                    });
+                }//if
+                else {
+                    response.end('-1');
+                }
+                break;
+            }
+        case '/newQuestion'://Petición POST (inserción de nueva pregunta)
+            {
+                if (request.method === "POST")
+                {
+                    let body = '';
+                    request.on('data', chunk => {
+                        body += chunk.toString();
+                    });
+                    request.on('end', () => {
+                        let data = body.split('\"')[1].split('n')[1];
+                        //console.log(body);
+                        //console.log(data);
+                        firebase.database().ref("questions").update(JSON.parse(body));
+                        firebase.database().ref("questionsCount").set(data);
+                        response.end('ok');
+                    });
+                }//if
+                else {
+                    response.end();
+                }
+                break;
+            }
+        default:
+            {
+                //Solicitud no esperada
+            }
+    }//switch
 })
 servidor.listen(puerto);
